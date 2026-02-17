@@ -56,6 +56,7 @@ function analyzeSalesData(data, options) {
   if (!(typeof options === "object")) {
     throw new Error("Опции не являются объектом");
   }
+
   const { calculateRevenue, calculateBonus } = options;
 
   if (!calculateRevenue || !calculateBonus) {
@@ -73,39 +74,30 @@ function analyzeSalesData(data, options) {
     };
   });
 
-  const sellerIndex = Object.fromEntries(sellerStats.map((seller) => [seller.seller_id, seller])); // Ключом будет id, значением — запись из sellerStats
+  const sellerIndex = Object.fromEntries(sellerStats.map((seller) => [seller.seller_id, seller]));
 
-  const productIndex = Object.fromEntries(data.products.map((product) => [product.sku, product])); // Ключом будет sku, значением — запись из data.products
+  const productIndex = Object.fromEntries(data.products.map((product) => [product.sku, product]));
 
   data.purchase_records.forEach((record) => {
-    // чек
     const seller = sellerIndex[record.seller_id];
     seller.sales_count += 1;
     seller.revenue += record.total_amount;
 
     record.items.forEach((item) => {
-      const product = productIndex[item.sku]; // Товар
-
-      // Посчитать себестоимость (cost) товара как product.purchase_price, умноженную на количество товаров из чека
+      const product = productIndex[item.sku];
       const cost = product.purchase_price * item.quantity;
-
-      // Посчитать выручку (revenue) с учётом скидки через функцию calculateRevenue
       const revenue = calculateRevenue(item);
-
-      // Посчитать прибыль: выручка минус себестоимость
       const profit = revenue - cost;
-
-      // Увеличить общую накопленную прибыль (profit) у продавца
       seller.profit += profit;
 
-      // Учёт количества проданных товаров
       if (!seller.products_sold[item.sku]) {
         seller.products_sold[item.sku] = 0;
       }
-      // По артикулу товара увеличить его проданное количество у продавца
+
       seller.products_sold[item.sku] += item.quantity;
     });
   });
+
   sellerStats.sort((sellerA, sellerB) => sellerB.profit - sellerA.profit);
 
   sellerStats.forEach((seller, index) => {
